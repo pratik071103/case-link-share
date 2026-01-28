@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      case_history_sections: {
+        Row: {
+          case_record_id: string
+          data: Json
+          id: string
+          section_key: string
+          updated_at: string
+        }
+        Insert: {
+          case_record_id: string
+          data?: Json
+          id?: string
+          section_key: string
+          updated_at?: string
+        }
+        Update: {
+          case_record_id?: string
+          data?: Json
+          id?: string
+          section_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_history_sections_case_record_id_fkey"
+            columns: ["case_record_id"]
+            isOneToOne: false
+            referencedRelation: "case_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_records: {
+        Row: {
+          child_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_records_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: true
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      children: {
+        Row: {
+          case_slug: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          case_slug: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          case_slug?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          child_id: string
+          created_at: string
+          id: string
+          notes: Json
+          session_date: string
+          updated_at: string
+        }
+        Insert: {
+          child_id: string
+          created_at?: string
+          id?: string
+          notes?: Json
+          session_date: string
+          updated_at?: string
+        }
+        Update: {
+          child_id?: string
+          created_at?: string
+          id?: string
+          notes?: Json
+          session_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_child_id_fkey"
+            columns: ["child_id"]
+            isOneToOne: false
+            referencedRelation: "children"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
