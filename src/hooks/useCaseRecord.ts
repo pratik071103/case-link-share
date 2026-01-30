@@ -10,6 +10,19 @@ export interface CaseRecord {
   updated_at: string;
 }
 
+export interface CoachDetails {
+  id: string;
+  case_record_id: string;
+  coach_name: string | null;
+  date_of_parent_interaction: string | null;
+  child_interaction_start_date: string | null;
+  total_sessions_taken: number;
+  child_interaction_end_date: string | null;
+  assessment_report: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CaseHistorySection {
   id: string;
   case_record_id: string;
@@ -54,6 +67,80 @@ export function useCaseBySlug(caseSlug: string | undefined) {
     },
     enabled: !!caseSlug,
   });
+}
+
+export function useCoachDetails(caseRecordId: string | undefined) {
+  return useQuery({
+    queryKey: ['coach-details', caseRecordId],
+    queryFn: async () => {
+      if (!caseRecordId) return null;
+      
+      const { data, error } = await supabase
+        .from('coach_details')
+        .select('*')
+        .eq('case_record_id', caseRecordId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data as CoachDetails | null;
+    },
+    enabled: !!caseRecordId,
+  });
+}
+
+export function useUpdateCoachDetails() {
+  const queryClient = useQueryClient();
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  const mutation = useMutation({
+    mutationFn: async ({ 
+      caseRecordId, 
+      data 
+    }: { 
+      caseRecordId: string; 
+      data: Partial<Omit<CoachDetails, 'id' | 'case_record_id' | 'created_at' | 'updated_at'>>;
+    }) => {
+      // Check if record exists
+      const { data: existing } = await supabase
+        .from('coach_details')
+        .select('id')
+        .eq('case_record_id', caseRecordId)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('coach_details')
+          .update(data)
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('coach_details')
+          .insert({ case_record_id: caseRecordId, ...data });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['coach-details', variables.caseRecordId] 
+      });
+    },
+  });
+
+  const debouncedUpdate = useCallback(
+    (caseRecordId: string, data: Partial<Omit<CoachDetails, 'id' | 'case_record_id' | 'created_at' | 'updated_at'>>) => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+      
+      debounceTimer.current = setTimeout(() => {
+        mutation.mutate({ caseRecordId, data });
+      }, 1000);
+    },
+    [mutation]
+  );
+
+  return { ...mutation, debouncedUpdate };
 }
 
 export function useCaseHistorySections(caseRecordId: string | undefined) {

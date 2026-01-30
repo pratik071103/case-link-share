@@ -96,6 +96,53 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_details: {
+        Row: {
+          assessment_report: string | null
+          case_record_id: string
+          child_interaction_end_date: string | null
+          child_interaction_start_date: string | null
+          coach_name: string | null
+          created_at: string
+          date_of_parent_interaction: string | null
+          id: string
+          total_sessions_taken: number | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_report?: string | null
+          case_record_id: string
+          child_interaction_end_date?: string | null
+          child_interaction_start_date?: string | null
+          coach_name?: string | null
+          created_at?: string
+          date_of_parent_interaction?: string | null
+          id?: string
+          total_sessions_taken?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_report?: string | null
+          case_record_id?: string
+          child_interaction_end_date?: string | null
+          child_interaction_start_date?: string | null
+          coach_name?: string | null
+          created_at?: string
+          date_of_parent_interaction?: string | null
+          id?: string
+          total_sessions_taken?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_details_case_record_id_fkey"
+            columns: ["case_record_id"]
+            isOneToOne: true
+            referencedRelation: "case_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           child_id: string

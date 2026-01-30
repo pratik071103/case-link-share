@@ -1,24 +1,39 @@
 import { useParams, Link } from 'react-router-dom';
-import { useCaseBySlug, useCaseHistorySections, useUpdateSection } from '@/hooks/useCaseRecord';
-import { CaseHistorySection } from '@/components/CaseHistorySection';
+import { 
+  useCaseBySlug, 
+  useCaseHistorySections, 
+  useUpdateSection,
+  useCoachDetails,
+  useUpdateCoachDetails 
+} from '@/hooks/useCaseRecord';
 import { SessionList } from '@/components/SessionList';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import type { Json } from '@/integrations/supabase/types';
+import {
+  CoachDetailsSection,
+  GeneralInfoSection,
+  AcademicPerformanceSection,
+  EmotionalBehavioralSection,
+  SocialSkillsSection,
+  SuccessSkillsSection,
+  PhysicalDevelopmentSection,
+  AttentionSection,
+} from '@/components/case-history';
 
-const HISTORY_SECTIONS = [
-  { key: 'child_background', title: 'Child Background' },
-  { key: 'parent_history', title: 'Parent History' },
-  { key: 'developmental_history', title: 'Developmental History' },
-  { key: 'medical_history', title: 'Medical History' },
-  { key: 'behavioral_observations', title: 'Behavioral Observations' },
-  { key: 'assessment_summary', title: 'Assessment Summary' },
-  { key: 'therapy_goals', title: 'Therapy Goals' },
-  { key: 'additional_notes', title: 'Additional Notes' },
-];
+// Section keys for the structured form
+const SECTION_KEYS = {
+  GENERAL_INFO: 'general_info',
+  ACADEMIC: 'academic_performance',
+  EMOTIONAL: 'emotional_behavioral',
+  SOCIAL: 'social_skills',
+  SUCCESS: 'success_skills',
+  PHYSICAL: 'physical_development',
+  ATTENTION: 'attention_profile',
+} as const;
 
 export default function CaseRecord() {
   const { caseSlug } = useParams<{ caseSlug: string }>();
@@ -26,22 +41,59 @@ export default function CaseRecord() {
   
   const caseRecordId = childData?.case_records?.[0]?.id;
   const { data: sections, isLoading: isLoadingSections } = useCaseHistorySections(caseRecordId);
-  const { debouncedUpdate, isPending: isSaving } = useUpdateSection();
+  const { debouncedUpdate: updateSection, isPending: isSavingSection } = useUpdateSection();
+  
+  const { data: coachDetails, isLoading: isLoadingCoach } = useCoachDetails(caseRecordId);
+  const { debouncedUpdate: updateCoachDetails, isPending: isSavingCoach } = useUpdateCoachDetails();
 
+  // Track which sections have been modified
+  const [changedSections, setChangedSections] = useState<Set<string>>(new Set());
+
+  // Parse section data from database
   const sectionDataMap = useMemo(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, Json> = {};
     sections?.forEach((section) => {
-      const data = section.data as { content?: string } | null;
-      map[section.section_key] = data?.content || '';
+      map[section.section_key] = section.data;
     });
     return map;
   }, [sections]);
 
-  const handleSectionUpdate = useCallback((sectionKey: string, value: string) => {
+  const handleSectionUpdate = useCallback((sectionKey: string, data: Json) => {
     if (!caseRecordId) return;
-    const data: Json = { content: value };
-    debouncedUpdate(caseRecordId, sectionKey, data);
-  }, [caseRecordId, debouncedUpdate]);
+    setChangedSections(prev => new Set(prev).add(sectionKey));
+    updateSection(caseRecordId, sectionKey, data);
+  }, [caseRecordId, updateSection]);
+
+  const handleCoachUpdate = useCallback((data: {
+    coach_name: string;
+    date_of_parent_interaction: string;
+    child_interaction_start_date: string;
+    total_sessions_taken: number;
+    child_interaction_end_date: string;
+    assessment_report: string;
+  }) => {
+    if (!caseRecordId) return;
+    setChangedSections(prev => new Set(prev).add('coach_details'));
+    updateCoachDetails(caseRecordId, data);
+  }, [caseRecordId, updateCoachDetails]);
+
+  // Default empty objects for each section
+  const getCoachData = () => ({
+    coach_name: coachDetails?.coach_name || '',
+    date_of_parent_interaction: coachDetails?.date_of_parent_interaction || '',
+    child_interaction_start_date: coachDetails?.child_interaction_start_date || '',
+    total_sessions_taken: coachDetails?.total_sessions_taken || 0,
+    child_interaction_end_date: coachDetails?.child_interaction_end_date || '',
+    assessment_report: coachDetails?.assessment_report || '',
+  });
+
+  const getSectionData = <T extends Record<string, unknown>>(key: string, defaults: T): T => {
+    const data = sectionDataMap[key];
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      return { ...defaults, ...data } as T;
+    }
+    return defaults;
+  };
 
   if (isLoadingChild) {
     return (
@@ -76,9 +128,12 @@ export default function CaseRecord() {
     );
   }
 
+  const isLoading = isLoadingSections || isLoadingCoach;
+  const isSaving = isSavingSection || isSavingCoach;
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <header className="mb-6">
           <Button asChild variant="ghost" className="mb-4 -ml-2">
@@ -109,36 +164,139 @@ export default function CaseRecord() {
           </TabsList>
 
           <TabsContent value="history">
-            {isLoadingSections ? (
+            {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-4">
-                  {HISTORY_SECTIONS.slice(0, 4).map((section) => (
-                    <CaseHistorySection
-                      key={section.key}
-                      title={section.title}
-                      sectionKey={section.key}
-                      initialValue={sectionDataMap[section.key] || ''}
-                      onUpdate={(value) => handleSectionUpdate(section.key, value)}
-                      isSaving={isSaving}
-                    />
-                  ))}
-                </div>
-                <div className="space-y-4">
-                  {HISTORY_SECTIONS.slice(4).map((section) => (
-                    <CaseHistorySection
-                      key={section.key}
-                      title={section.title}
-                      sectionKey={section.key}
-                      initialValue={sectionDataMap[section.key] || ''}
-                      onUpdate={(value) => handleSectionUpdate(section.key, value)}
-                      isSaving={isSaving}
-                    />
-                  ))}
-                </div>
+              <div className="space-y-6">
+                {/* Coach Details */}
+                <CoachDetailsSection
+                  data={getCoachData()}
+                  onChange={(data) => handleCoachUpdate(data)}
+                  isSaving={isSavingCoach}
+                  hasChanges={changedSections.has('coach_details')}
+                />
+
+                {/* General Information */}
+                <GeneralInfoSection
+                  data={getSectionData(SECTION_KEYS.GENERAL_INFO, {
+                    name_of_child: childData.name,
+                    age_of_child: '',
+                    gender: '',
+                    school_name: '',
+                    board: '',
+                    city: '',
+                    birth_history: '',
+                    school_timings: '',
+                    other_classes: '',
+                    weekly_availability: '',
+                    family_type: '',
+                    siblings: '',
+                    mother_profession: '',
+                    father_profession: '',
+                    contact_mode: '',
+                    contact_number: '',
+                    email: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.GENERAL_INFO, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.GENERAL_INFO)}
+                />
+
+                {/* Academic Performance */}
+                <AcademicPerformanceSection
+                  data={getSectionData(SECTION_KEYS.ACADEMIC, {
+                    subjects_excels: '',
+                    subjects_struggles: '',
+                    handwriting_performance: '',
+                    other_concerns: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.ACADEMIC, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.ACADEMIC)}
+                />
+
+                {/* Emotional & Behavioral */}
+                <EmotionalBehavioralSection
+                  data={getSectionData(SECTION_KEYS.EMOTIONAL, {
+                    screen_time: '',
+                    behavioral_concerns: '',
+                    performance_anxiety: '',
+                    task_completion: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.EMOTIONAL, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.EMOTIONAL)}
+                />
+
+                {/* Social Skills */}
+                <SocialSkillsSection
+                  data={getSectionData(SECTION_KEYS.SOCIAL, {
+                    shy_interaction: '',
+                    interact_kids: 0,
+                    interact_kids_notes: '',
+                    interact_adults: 0,
+                    interact_adults_notes: '',
+                    presentations: 0,
+                    presentations_notes: '',
+                    expresses_thoughts: 0,
+                    expresses_thoughts_notes: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.SOCIAL, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.SOCIAL)}
+                />
+
+                {/* Success Skills */}
+                <SuccessSkillsSection
+                  data={getSectionData(SECTION_KEYS.SUCCESS, {
+                    creativity: 0,
+                    creativity_notes: '',
+                    problem_solving: 0,
+                    problem_solving_notes: '',
+                    decision_making: 0,
+                    decision_making_notes: '',
+                    collaboration: 0,
+                    collaboration_notes: '',
+                    initiative: 0,
+                    initiative_notes: '',
+                    responsibility: 0,
+                    responsibility_notes: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.SUCCESS, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.SUCCESS)}
+                />
+
+                {/* Physical Development */}
+                <PhysicalDevelopmentSection
+                  data={getSectionData(SECTION_KEYS.PHYSICAL, {
+                    physical_concerns: '',
+                    daily_play_time: '',
+                    physical_activities: '',
+                    hobbies: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.PHYSICAL, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.PHYSICAL)}
+                />
+
+                {/* Attention & Impulsivity */}
+                <AttentionSection
+                  data={getSectionData(SECTION_KEYS.ATTENTION, {
+                    attention_span: '',
+                    attention_notes: '',
+                    distraction_types: '',
+                    distraction_notes: '',
+                    impulsivity: '',
+                    impulsivity_notes: '',
+                    additional_concerns: '',
+                  })}
+                  onChange={(data) => handleSectionUpdate(SECTION_KEYS.ATTENTION, data as unknown as Json)}
+                  isSaving={isSaving}
+                  hasChanges={changedSections.has(SECTION_KEYS.ATTENTION)}
+                />
               </div>
             )}
           </TabsContent>
