@@ -1,11 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Check, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { SectionWrapper } from './shared/SectionWrapper';
+import { ConcernsFields } from './shared/ConcernsFields';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
-interface GeneralInfo {
+interface GeneralInfoData {
   name_of_child: string;
   age_of_child: string;
   gender: string;
@@ -23,11 +25,14 @@ interface GeneralInfo {
   contact_mode: string;
   contact_number: string;
   email: string;
+  diagnosis: string;
+  parental_concerns: string[];
+  teacher_concerns: string;
 }
 
 interface GeneralInfoSectionProps {
-  data: GeneralInfo;
-  onChange: (data: GeneralInfo) => void;
+  data: GeneralInfoData;
+  onChange: (data: GeneralInfoData) => void;
   isSaving?: boolean;
   hasChanges?: boolean;
 }
@@ -38,39 +43,56 @@ export function GeneralInfoSection({
   isSaving = false,
   hasChanges = false 
 }: GeneralInfoSectionProps) {
-  const handleChange = (field: keyof GeneralInfo, value: string) => {
-    onChange({ ...data, [field]: value });
-  };
+  // Local state for controlled inputs
+  const [localData, setLocalData] = useState<GeneralInfoData>(data);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
+
+  // Sync with external data only on initial mount
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setLocalData(data);
+    }
+  }, [data]);
+
+  const handleChange = useCallback((field: keyof GeneralInfoData, value: string | string[]) => {
+    setLocalData((prev) => {
+      const newData = { ...prev, [field]: value };
+      
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      
+      debounceRef.current = setTimeout(() => {
+        onChange(newData);
+      }, 400);
+      
+      return newData;
+    });
+  }, [onChange]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3 bg-primary/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Info className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg font-semibold">General Information</CardTitle>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isSaving ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : hasChanges ? (
-              <>
-                <Check className="h-3 w-3 text-primary" />
-                <span className="text-primary">Saved</span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <SectionWrapper
+      title="General Information"
+      icon={<Info className="h-5 w-5" />}
+      isSaving={isSaving}
+      hasChanges={hasChanges}
+    >
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="child_name">Name of the Child</Label>
           <Input
             id="child_name"
-            value={data.name_of_child || ''}
+            value={localData.name_of_child || ''}
             onChange={(e) => handleChange('name_of_child', e.target.value)}
             placeholder="Enter child's name"
           />
@@ -79,14 +101,17 @@ export function GeneralInfoSection({
           <Label htmlFor="age">Age of the Child</Label>
           <Input
             id="age"
-            value={data.age_of_child || ''}
+            value={localData.age_of_child || ''}
             onChange={(e) => handleChange('age_of_child', e.target.value)}
             placeholder="e.g., 7 years"
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="gender">Gender</Label>
-          <Select value={data.gender || ''} onValueChange={(v) => handleChange('gender', v)}>
+          <Select 
+            value={localData.gender || ''} 
+            onValueChange={(v) => handleChange('gender', v)}
+          >
             <SelectTrigger id="gender">
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
@@ -101,7 +126,7 @@ export function GeneralInfoSection({
           <Label htmlFor="school">School Name</Label>
           <Input
             id="school"
-            value={data.school_name || ''}
+            value={localData.school_name || ''}
             onChange={(e) => handleChange('school_name', e.target.value)}
             placeholder="Enter school name"
           />
@@ -110,7 +135,7 @@ export function GeneralInfoSection({
           <Label htmlFor="board">Board</Label>
           <Input
             id="board"
-            value={data.board || ''}
+            value={localData.board || ''}
             onChange={(e) => handleChange('board', e.target.value)}
             placeholder="e.g., CBSE, ICSE"
           />
@@ -119,16 +144,31 @@ export function GeneralInfoSection({
           <Label htmlFor="city">City</Label>
           <Input
             id="city"
-            value={data.city || ''}
+            value={localData.city || ''}
             onChange={(e) => handleChange('city', e.target.value)}
             placeholder="Enter city"
           />
         </div>
+        
+        {/* Diagnosis field - new field */}
+        <div className="space-y-2 md:col-span-2 lg:col-span-3">
+          <Label htmlFor="diagnosis" className="text-accent font-medium">
+            Diagnosis
+          </Label>
+          <Textarea
+            id="diagnosis"
+            value={localData.diagnosis || ''}
+            onChange={(e) => handleChange('diagnosis', e.target.value)}
+            placeholder="e.g., Speech delay with sensory processing concerns"
+            className="min-h-[80px] border-accent/30 focus:border-accent"
+          />
+        </div>
+        
         <div className="space-y-2 md:col-span-2 lg:col-span-3">
           <Label htmlFor="birth_history">Any Significant Birth History or Developmental Delays</Label>
           <Textarea
             id="birth_history"
-            value={data.birth_history || ''}
+            value={localData.birth_history || ''}
             onChange={(e) => handleChange('birth_history', e.target.value)}
             placeholder="e.g., Premature, developmental milestones..."
             className="min-h-[80px]"
@@ -138,7 +178,7 @@ export function GeneralInfoSection({
           <Label htmlFor="school_timings">Child's School Timings</Label>
           <Input
             id="school_timings"
-            value={data.school_timings || ''}
+            value={localData.school_timings || ''}
             onChange={(e) => handleChange('school_timings', e.target.value)}
             placeholder="e.g., 8:15-2:55"
           />
@@ -147,7 +187,7 @@ export function GeneralInfoSection({
           <Label htmlFor="other_classes">Other Classes Beyond School Hours</Label>
           <Input
             id="other_classes"
-            value={data.other_classes || ''}
+            value={localData.other_classes || ''}
             onChange={(e) => handleChange('other_classes', e.target.value)}
             placeholder="e.g., Music, Sports"
           />
@@ -156,7 +196,7 @@ export function GeneralInfoSection({
           <Label htmlFor="availability">Child's Weekly Availability</Label>
           <Input
             id="availability"
-            value={data.weekly_availability || ''}
+            value={localData.weekly_availability || ''}
             onChange={(e) => handleChange('weekly_availability', e.target.value)}
             placeholder="e.g., Wednesday"
           />
@@ -165,7 +205,7 @@ export function GeneralInfoSection({
           <Label htmlFor="family_type">Type of Family (Nuclear or Joint)</Label>
           <Textarea
             id="family_type"
-            value={data.family_type || ''}
+            value={localData.family_type || ''}
             onChange={(e) => handleChange('family_type', e.target.value)}
             placeholder="Describe family structure..."
             className="min-h-[80px]"
@@ -175,7 +215,7 @@ export function GeneralInfoSection({
           <Label htmlFor="siblings">Siblings with Order and Age</Label>
           <Input
             id="siblings"
-            value={data.siblings || ''}
+            value={localData.siblings || ''}
             onChange={(e) => handleChange('siblings', e.target.value)}
             placeholder="e.g., Only child, Elder sister (10 years)"
           />
@@ -184,7 +224,7 @@ export function GeneralInfoSection({
           <Label htmlFor="mother_prof">Profession of Mother</Label>
           <Input
             id="mother_prof"
-            value={data.mother_profession || ''}
+            value={localData.mother_profession || ''}
             onChange={(e) => handleChange('mother_profession', e.target.value)}
             placeholder="Optional"
           />
@@ -193,14 +233,17 @@ export function GeneralInfoSection({
           <Label htmlFor="father_prof">Profession of Father</Label>
           <Input
             id="father_prof"
-            value={data.father_profession || ''}
+            value={localData.father_profession || ''}
             onChange={(e) => handleChange('father_profession', e.target.value)}
             placeholder="Optional"
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="contact_mode">Preferred Mode of Contact</Label>
-          <Select value={data.contact_mode || ''} onValueChange={(v) => handleChange('contact_mode', v)}>
+          <Select 
+            value={localData.contact_mode || ''} 
+            onValueChange={(v) => handleChange('contact_mode', v)}
+          >
             <SelectTrigger id="contact_mode">
               <SelectValue placeholder="Select mode" />
             </SelectTrigger>
@@ -215,7 +258,7 @@ export function GeneralInfoSection({
           <Label htmlFor="phone">Contact Number</Label>
           <Input
             id="phone"
-            value={data.contact_number || ''}
+            value={localData.contact_number || ''}
             onChange={(e) => handleChange('contact_number', e.target.value)}
             placeholder="Phone number"
           />
@@ -225,12 +268,20 @@ export function GeneralInfoSection({
           <Input
             id="email"
             type="email"
-            value={data.email || ''}
+            value={localData.email || ''}
             onChange={(e) => handleChange('email', e.target.value)}
             placeholder="email@example.com"
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Concerns Fields */}
+      <ConcernsFields
+        parentalConcerns={localData.parental_concerns || []}
+        teacherConcerns={localData.teacher_concerns || ''}
+        onParentalConcernsChange={(concerns) => handleChange('parental_concerns', concerns)}
+        onTeacherConcernsChange={(concerns) => handleChange('teacher_concerns', concerns)}
+      />
+    </SectionWrapper>
   );
 }

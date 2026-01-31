@@ -6,3 +6,4 @@ export { SocialSkillsSection } from './SocialSkillsSection';
 export { SuccessSkillsSection } from './SuccessSkillsSection';
 export { PhysicalDevelopmentSection } from './PhysicalDevelopmentSection';
 export { AttentionSection } from './AttentionSection';
+export * from './shared';

@@ -1,57 +1,63 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Slider } from '@/components/ui/slider';
-import { Loader2, Check, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+import { SectionWrapper } from './shared/SectionWrapper';
+import { RatingSlider } from './shared/RatingSlider';
+import { ConcernsFields } from './shared/ConcernsFields';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
-interface SuccessSkills {
-  creativity: number;
-  creativity_notes: string;
-  problem_solving: number;
-  problem_solving_notes: string;
-  decision_making: number;
-  decision_making_notes: string;
-  collaboration: number;
-  collaboration_notes: string;
-  initiative: number;
-  initiative_notes: string;
-  responsibility: number;
-  responsibility_notes: string;
+interface SuccessSkillsData {
+  ratings: {
+    creativity: number;
+    problem_solving: number;
+    decision_making: number;
+    collaboration: number;
+    initiative: number;
+    responsibility: number;
+  };
+  notes: {
+    creativity: string;
+    problem_solving: string;
+    decision_making: string;
+    collaboration: string;
+    initiative: string;
+    responsibility: string;
+  };
+  parental_concerns: string[];
+  teacher_concerns: string;
 }
 
 interface SuccessSkillsSectionProps {
-  data: SuccessSkills;
-  onChange: (data: SuccessSkills) => void;
+  data: SuccessSkillsData;
+  onChange: (data: SuccessSkillsData) => void;
   isSaving?: boolean;
   hasChanges?: boolean;
 }
 
-function RatingSlider({ 
-  value, 
-  onChange, 
-  label 
-}: { 
-  value: number; 
-  onChange: (val: number) => void; 
-  label: string; 
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="text-sm font-medium bg-primary/10 px-2 py-0.5 rounded">{value}/5</span>
-      </div>
-      <Slider
-        value={[value]}
-        onValueChange={([v]) => onChange(v)}
-        min={0}
-        max={5}
-        step={1}
-        className="w-full"
-      />
-    </div>
-  );
-}
+const DEFAULT_RATINGS = {
+  creativity: 3,
+  problem_solving: 3,
+  decision_making: 3,
+  collaboration: 3,
+  initiative: 3,
+  responsibility: 3,
+};
+
+const DEFAULT_NOTES = {
+  creativity: '',
+  problem_solving: '',
+  decision_making: '',
+  collaboration: '',
+  initiative: '',
+  responsibility: '',
+};
+
+const SKILL_FIELDS = [
+  { key: 'creativity' as const, label: 'Creativity', description: 'Ability to come up with ideas or solutions on their own' },
+  { key: 'problem_solving' as const, label: 'Problem Solving', description: 'Problem solving abilities' },
+  { key: 'decision_making' as const, label: 'Decision Making', description: 'Decision making abilities' },
+  { key: 'collaboration' as const, label: 'Collaboration', description: 'Can collaborate with peers in tasks or group activities' },
+  { key: 'initiative' as const, label: 'Initiative', description: 'Takes initiative to do things' },
+  { key: 'responsibility' as const, label: 'Responsibility & Accountability', description: 'Takes responsibility for actions' },
+];
 
 export function SuccessSkillsSection({ 
   data, 
@@ -59,68 +65,116 @@ export function SuccessSkillsSection({
   isSaving = false,
   hasChanges = false 
 }: SuccessSkillsSectionProps) {
-  const handleChange = (field: keyof SuccessSkills, value: string | number) => {
-    onChange({ ...data, [field]: value });
-  };
+  const [localData, setLocalData] = useState<SuccessSkillsData>(() => ({
+    ratings: { ...DEFAULT_RATINGS, ...data.ratings },
+    notes: { ...DEFAULT_NOTES, ...data.notes },
+    parental_concerns: data.parental_concerns || [],
+    teacher_concerns: data.teacher_concerns || '',
+  }));
+  
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
 
-  const skills = [
-    { key: 'creativity' as const, label: 'Creativity', desc: 'To come up with ideas or solutions on their own' },
-    { key: 'problem_solving' as const, label: 'Problem Solving Abilities', desc: '' },
-    { key: 'decision_making' as const, label: 'Decision Making Abilities', desc: '' },
-    { key: 'collaboration' as const, label: 'Collaboration', desc: 'Can collaborate with peers in tasks or group activities' },
-    { key: 'initiative' as const, label: 'Initiative', desc: 'Takes initiative to do things' },
-    { key: 'responsibility' as const, label: 'Responsibility & Accountability', desc: '' },
-  ];
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setLocalData({
+        ratings: { ...DEFAULT_RATINGS, ...data.ratings },
+        notes: { ...DEFAULT_NOTES, ...data.notes },
+        parental_concerns: data.parental_concerns || [],
+        teacher_concerns: data.teacher_concerns || '',
+      });
+    }
+  }, [data]);
+
+  const saveData = useCallback((newData: SuccessSkillsData) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      onChange(newData);
+    }, 400);
+  }, [onChange]);
+
+  const handleRatingChange = useCallback((key: keyof typeof DEFAULT_RATINGS, value: number) => {
+    setLocalData((prev) => {
+      const newData = {
+        ...prev,
+        ratings: { ...prev.ratings, [key]: value },
+      };
+      saveData(newData);
+      return newData;
+    });
+  }, [saveData]);
+
+  const handleNotesChange = useCallback((key: keyof typeof DEFAULT_NOTES, value: string) => {
+    setLocalData((prev) => {
+      const newData = {
+        ...prev,
+        notes: { ...prev.notes, [key]: value },
+      };
+      saveData(newData);
+      return newData;
+    });
+  }, [saveData]);
+
+  const handleParentalConcernsChange = useCallback((concerns: string[]) => {
+    setLocalData((prev) => {
+      const newData = { ...prev, parental_concerns: concerns };
+      saveData(newData);
+      return newData;
+    });
+  }, [saveData]);
+
+  const handleTeacherConcernsChange = useCallback((concerns: string) => {
+    setLocalData((prev) => {
+      const newData = { ...prev, teacher_concerns: concerns };
+      saveData(newData);
+      return newData;
+    });
+  }, [saveData]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3 bg-primary/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg font-semibold">Success Skills Profile</CardTitle>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isSaving ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : hasChanges ? (
-              <>
-                <Check className="h-3 w-3 text-primary" />
-                <span className="text-primary">Saved</span>
-              </>
-            ) : null}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Rate on a scale of 0-5 (0 being lowest, 5 being highest)
-        </p>
-      </CardHeader>
-      <CardContent className="pt-4 grid gap-4 md:grid-cols-2">
-        {skills.map((skill) => (
-          <div key={skill.key} className="space-y-3 p-4 border rounded-lg">
-            <div>
-              <Label>{skill.label}</Label>
-              {skill.desc && (
-                <p className="text-xs text-muted-foreground">{skill.desc}</p>
-              )}
-            </div>
-            <RatingSlider
-              value={data[skill.key] || 0}
-              onChange={(v) => handleChange(skill.key, v)}
-              label="Rating"
-            />
-            <Textarea
-              value={data[`${skill.key}_notes` as keyof SuccessSkills] as string || ''}
-              onChange={(e) => handleChange(`${skill.key}_notes` as keyof SuccessSkills, e.target.value)}
-              placeholder="Additional notes..."
-              className="min-h-[60px]"
-            />
-          </div>
+    <SectionWrapper
+      title="Success Skills Profile"
+      icon={<Trophy className="h-5 w-5" />}
+      isSaving={isSaving}
+      hasChanges={hasChanges}
+    >
+      <p className="text-xs text-muted-foreground mb-4">
+        Rate on a scale of 1-5 (1 being lowest, 5 being highest)
+      </p>
+      
+      <div className="grid gap-4 md:grid-cols-2">
+        {SKILL_FIELDS.map((field) => (
+          <RatingSlider
+            key={field.key}
+            label={field.label}
+            description={field.description}
+            value={localData.ratings[field.key] || 3}
+            notes={localData.notes[field.key] || ''}
+            onValueChange={(value) => handleRatingChange(field.key, value)}
+            onNotesChange={(notes) => handleNotesChange(field.key, notes)}
+          />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Concerns Fields */}
+      <ConcernsFields
+        parentalConcerns={localData.parental_concerns}
+        teacherConcerns={localData.teacher_concerns}
+        onParentalConcernsChange={handleParentalConcernsChange}
+        onTeacherConcernsChange={handleTeacherConcernsChange}
+      />
+    </SectionWrapper>
   );
 }
