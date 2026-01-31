@@ -158,9 +158,13 @@ export default function CaseRecord() {
 
         {/* Main Content */}
         <Tabs defaultValue="history" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="history">Case History</TabsTrigger>
-            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsList className="mb-6 bg-primary/10">
+            <TabsTrigger value="history" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Case History
+            </TabsTrigger>
+            <TabsTrigger value="sessions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Sessions
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="history">
@@ -198,6 +202,9 @@ export default function CaseRecord() {
                     contact_mode: '',
                     contact_number: '',
                     email: '',
+                    diagnosis: '',
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.GENERAL_INFO, data as unknown as Json)}
                   isSaving={isSaving}
@@ -211,6 +218,8 @@ export default function CaseRecord() {
                     subjects_struggles: '',
                     handwriting_performance: '',
                     other_concerns: '',
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.ACADEMIC, data as unknown as Json)}
                   isSaving={isSaving}
@@ -224,45 +233,54 @@ export default function CaseRecord() {
                     behavioral_concerns: '',
                     performance_anxiety: '',
                     task_completion: '',
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.EMOTIONAL, data as unknown as Json)}
                   isSaving={isSaving}
                   hasChanges={changedSections.has(SECTION_KEYS.EMOTIONAL)}
                 />
 
-                {/* Social Skills */}
+                {/* Social Skills - New structure with ratings */}
                 <SocialSkillsSection
                   data={getSectionData(SECTION_KEYS.SOCIAL, {
-                    shy_interaction: '',
-                    interact_kids: 0,
-                    interact_kids_notes: '',
-                    interact_adults: 0,
-                    interact_adults_notes: '',
-                    presentations: 0,
-                    presentations_notes: '',
-                    expresses_thoughts: 0,
-                    expresses_thoughts_notes: '',
+                    ratings: {
+                      shy_to_interact: 3,
+                      kids_interaction: 3,
+                      adult_interaction: 3,
+                      presentation_confidence: 3,
+                      expression_clarity: 3,
+                    },
+                    notes: '',
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.SOCIAL, data as unknown as Json)}
                   isSaving={isSaving}
                   hasChanges={changedSections.has(SECTION_KEYS.SOCIAL)}
                 />
 
-                {/* Success Skills */}
+                {/* Success Skills - New structure with ratings and notes */}
                 <SuccessSkillsSection
                   data={getSectionData(SECTION_KEYS.SUCCESS, {
-                    creativity: 0,
-                    creativity_notes: '',
-                    problem_solving: 0,
-                    problem_solving_notes: '',
-                    decision_making: 0,
-                    decision_making_notes: '',
-                    collaboration: 0,
-                    collaboration_notes: '',
-                    initiative: 0,
-                    initiative_notes: '',
-                    responsibility: 0,
-                    responsibility_notes: '',
+                    ratings: {
+                      creativity: 3,
+                      problem_solving: 3,
+                      decision_making: 3,
+                      collaboration: 3,
+                      initiative: 3,
+                      responsibility: 3,
+                    },
+                    notes: {
+                      creativity: '',
+                      problem_solving: '',
+                      decision_making: '',
+                      collaboration: '',
+                      initiative: '',
+                      responsibility: '',
+                    },
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.SUCCESS, data as unknown as Json)}
                   isSaving={isSaving}
@@ -276,6 +294,9 @@ export default function CaseRecord() {
                     daily_play_time: '',
                     physical_activities: '',
                     hobbies: '',
+                    medical_history_development_details: [] as string[],
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.PHYSICAL, data as unknown as Json)}
                   isSaving={isSaving}
@@ -292,6 +313,8 @@ export default function CaseRecord() {
                     impulsivity: '',
                     impulsivity_notes: '',
                     additional_concerns: '',
+                    parental_concerns: [] as string[],
+                    teacher_concerns: '',
                   })}
                   onChange={(data) => handleSectionUpdate(SECTION_KEYS.ATTENTION, data as unknown as Json)}
                   isSaving={isSaving}

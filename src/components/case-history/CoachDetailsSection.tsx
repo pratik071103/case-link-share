@@ -1,9 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Check, User } from 'lucide-react';
+import { User } from 'lucide-react';
+import { SectionWrapper } from './shared/SectionWrapper';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
-interface CoachDetails {
+interface CoachDetailsData {
   coach_name: string;
   date_of_parent_interaction: string;
   child_interaction_start_date: string;
@@ -13,8 +14,8 @@ interface CoachDetails {
 }
 
 interface CoachDetailsSectionProps {
-  data: CoachDetails;
-  onChange: (data: CoachDetails) => void;
+  data: CoachDetailsData;
+  onChange: (data: CoachDetailsData) => void;
   isSaving?: boolean;
   hasChanges?: boolean;
 }
@@ -25,39 +26,71 @@ export function CoachDetailsSection({
   isSaving = false,
   hasChanges = false 
 }: CoachDetailsSectionProps) {
-  const handleChange = (field: keyof CoachDetails, value: string | number) => {
-    onChange({ ...data, [field]: value });
-  };
+  const [localData, setLocalData] = useState<CoachDetailsData>(() => ({
+    coach_name: data.coach_name || '',
+    date_of_parent_interaction: data.date_of_parent_interaction || '',
+    child_interaction_start_date: data.child_interaction_start_date || '',
+    total_sessions_taken: data.total_sessions_taken || 0,
+    child_interaction_end_date: data.child_interaction_end_date || '',
+    assessment_report: data.assessment_report || '',
+  }));
+  
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      setLocalData({
+        coach_name: data.coach_name || '',
+        date_of_parent_interaction: data.date_of_parent_interaction || '',
+        child_interaction_start_date: data.child_interaction_start_date || '',
+        total_sessions_taken: data.total_sessions_taken || 0,
+        child_interaction_end_date: data.child_interaction_end_date || '',
+        assessment_report: data.assessment_report || '',
+      });
+    }
+  }, [data]);
+
+  const saveData = useCallback((newData: CoachDetailsData) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      onChange(newData);
+    }, 400);
+  }, [onChange]);
+
+  const handleChange = useCallback((field: keyof CoachDetailsData, value: string | number) => {
+    setLocalData((prev) => {
+      const newData = { ...prev, [field]: value };
+      saveData(newData);
+      return newData;
+    });
+  }, [saveData]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="pb-3 bg-primary/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg font-semibold">Coach Details</CardTitle>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            {isSaving ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : hasChanges ? (
-              <>
-                <Check className="h-3 w-3 text-primary" />
-                <span className="text-primary">Saved</span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4 grid gap-4 md:grid-cols-2">
+    <SectionWrapper
+      title="Coach Details"
+      icon={<User className="h-5 w-5" />}
+      isSaving={isSaving}
+      hasChanges={hasChanges}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="coach_name">Coach Name</Label>
           <Input
             id="coach_name"
-            value={data.coach_name || ''}
+            value={localData.coach_name}
             onChange={(e) => handleChange('coach_name', e.target.value)}
             placeholder="Enter coach name"
           />
@@ -67,7 +100,7 @@ export function CoachDetailsSection({
           <Input
             id="parent_interaction"
             type="date"
-            value={data.date_of_parent_interaction || ''}
+            value={localData.date_of_parent_interaction}
             onChange={(e) => handleChange('date_of_parent_interaction', e.target.value)}
           />
         </div>
@@ -76,7 +109,7 @@ export function CoachDetailsSection({
           <Input
             id="child_start"
             type="date"
-            value={data.child_interaction_start_date || ''}
+            value={localData.child_interaction_start_date}
             onChange={(e) => handleChange('child_interaction_start_date', e.target.value)}
           />
         </div>
@@ -85,7 +118,7 @@ export function CoachDetailsSection({
           <Input
             id="child_end"
             type="date"
-            value={data.child_interaction_end_date || ''}
+            value={localData.child_interaction_end_date}
             onChange={(e) => handleChange('child_interaction_end_date', e.target.value)}
           />
         </div>
@@ -95,7 +128,7 @@ export function CoachDetailsSection({
             id="sessions"
             type="number"
             min="0"
-            value={data.total_sessions_taken || 0}
+            value={localData.total_sessions_taken}
             onChange={(e) => handleChange('total_sessions_taken', parseInt(e.target.value) || 0)}
           />
         </div>
@@ -103,12 +136,12 @@ export function CoachDetailsSection({
           <Label htmlFor="assessment">Assessment Report</Label>
           <Input
             id="assessment"
-            value={data.assessment_report || ''}
+            value={localData.assessment_report}
             onChange={(e) => handleChange('assessment_report', e.target.value)}
             placeholder="Link or filename"
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </SectionWrapper>
   );
 }
