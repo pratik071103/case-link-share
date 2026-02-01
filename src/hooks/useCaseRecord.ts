@@ -69,6 +69,8 @@ export function useCaseBySlug(caseSlug: string | undefined) {
   });
 }
 
+// Coach details are now stored as a section in case_history_sections
+// with section_key = 'coach_details'
 export function useCoachDetails(caseRecordId: string | undefined) {
   return useQuery({
     queryKey: ['coach-details', caseRecordId],
@@ -76,13 +78,31 @@ export function useCoachDetails(caseRecordId: string | undefined) {
       if (!caseRecordId) return null;
       
       const { data, error } = await supabase
-        .from('coach_details')
+        .from('case_history_sections')
         .select('*')
         .eq('case_record_id', caseRecordId)
+        .eq('section_key', 'coach_details')
         .maybeSingle();
       
       if (error) throw error;
-      return data as CoachDetails | null;
+      
+      // Transform section data to CoachDetails format
+      if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+        const sectionData = data.data as Record<string, unknown>;
+        return {
+          id: data.id,
+          case_record_id: data.case_record_id,
+          coach_name: (sectionData.coach_name as string) || null,
+          date_of_parent_interaction: (sectionData.date_of_parent_interaction as string) || null,
+          child_interaction_start_date: (sectionData.child_interaction_start_date as string) || null,
+          total_sessions_taken: (sectionData.total_sessions_taken as number) || 0,
+          child_interaction_end_date: (sectionData.child_interaction_end_date as string) || null,
+          assessment_report: (sectionData.assessment_report as string) || null,
+          created_at: data.updated_at,
+          updated_at: data.updated_at,
+        } as CoachDetails;
+      }
+      return null;
     },
     enabled: !!caseRecordId,
   });
@@ -100,23 +120,37 @@ export function useUpdateCoachDetails() {
       caseRecordId: string; 
       data: Partial<Omit<CoachDetails, 'id' | 'case_record_id' | 'created_at' | 'updated_at'>>;
     }) => {
-      // Check if record exists
+      // Store coach details as a case_history_section
       const { data: existing } = await supabase
-        .from('coach_details')
+        .from('case_history_sections')
         .select('id')
         .eq('case_record_id', caseRecordId)
+        .eq('section_key', 'coach_details')
         .maybeSingle();
+
+      const sectionData = {
+        coach_name: data.coach_name || '',
+        date_of_parent_interaction: data.date_of_parent_interaction || '',
+        child_interaction_start_date: data.child_interaction_start_date || '',
+        child_interaction_end_date: data.child_interaction_end_date || '',
+        total_sessions_taken: data.total_sessions_taken || 0,
+        assessment_report: data.assessment_report || '',
+      };
 
       if (existing) {
         const { error } = await supabase
-          .from('coach_details')
-          .update(data)
+          .from('case_history_sections')
+          .update({ data: sectionData })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('coach_details')
-          .insert({ case_record_id: caseRecordId, ...data });
+          .from('case_history_sections')
+          .insert({ 
+            case_record_id: caseRecordId, 
+            section_key: 'coach_details',
+            data: sectionData 
+          });
         if (error) throw error;
       }
     },
