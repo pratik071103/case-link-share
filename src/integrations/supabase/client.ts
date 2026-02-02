@@ -1,11 +1,9 @@
-// Main Database Connection (PROJECT A - consolidated)
-// Migration completed from PROJECT B (gjffcxlvjljsslpilgvv)
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// PROJECT A - Main Database (ttmkznpfdjwygksspmjz)
-const SUPABASE_URL = "https://ttmkznpfdjwygksspmjz.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0bWt6bnBmZGp3eWdrc3NwbWp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNzEwNzYsImV4cCI6MjA3NDc0NzA3Nn0.texvU7Iv4K2fDJaoBEebFOb5dna6xCq8M0XtopcMo94";
+// Connected Lovable Cloud project
+const SUPABASE_URL = "https://gjffcxlvjljsslpilgvv.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqZmZjeGx2amxqc3NscGlsZ3Z2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MDU2ODQsImV4cCI6MjA4NTE4MTY4NH0.y5cdI9xM9qSDDuHCJmTfVFrIOyd-z2RlcRYCsQWPjKs";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
