@@ -1,1 +1,4 @@
 project_id = "gjffcxlvjljsslpilgvv"
+
+[functions.load-user-assessment]
+verify_jwt = false

@@ -6,7 +6,7 @@ import {
   useCoachDetails,
   useUpdateCoachDetails 
 } from '@/hooks/useCaseRecord';
-import { SessionList } from '@/components/SessionList';
+import { SessionDetailsTab } from '@/components/session-details';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ClipboardList, Loader2, AlertCircle } from 'lucide-react';
@@ -163,7 +163,7 @@ export default function CaseRecord() {
               Case History
             </TabsTrigger>
             <TabsTrigger value="sessions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Sessions
+              Session Details
             </TabsTrigger>
           </TabsList>
 
@@ -325,7 +325,10 @@ export default function CaseRecord() {
           </TabsContent>
 
           <TabsContent value="sessions">
-            <SessionList childId={childData.id} />
+            <SessionDetailsTab 
+              childId={childData.id} 
+              childEmail={(sectionDataMap['general_info'] as Record<string, unknown>)?.email as string || ''}
+            />
           </TabsContent>
         </Tabs>
       </div>
